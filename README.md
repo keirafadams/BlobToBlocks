@@ -5,4 +5,4 @@ This work is inspired by [Intel Labs "Virtual Objects" concepts](https://www.use
 
 This tool chain is intended to provide client libraries in a variety of languages so that users may create compute decriptors (in labs parlance) describing the low level layout of a file or other data storage object that can then be communicated to block storage targets, such as NVMeOF servers, in a transport agnostic fashion.
 
-Obviously this is currently very early work, and who knows, may be abandoned precipitously 
+Take a look at [our WiKi](https://github.com/keirafadams/BlobToBlocks/wiki) for more details as this develops/
