@@ -5,12 +5,19 @@ class VirtualObject(object):
     def __init__(self, fpath, blk_sz, input=True):
         # TODO elise said something something error checking dont blow up the system or put
         # your toaster in the bathtub meh meh meh
-        self.input = input
-        self.nr_exts = 0
-        self.ext_list = []
-        self.blk_sz = blk_sz
+        if input is True:
+            self.flg = 1
+        else:
+            self.flg = 0
 
-        self._convert_to_exts(fpath)
+        self.nr_exts = 0
+        self.blk_sz = blk_sz
+        self.ext_list = []
+
+        if fpath is None:
+            return
+        else:
+            self._convert_to_exts(fpath)
 
     def _convert_to_exts(self, fpath):
         """
@@ -22,8 +29,8 @@ class VirtualObject(object):
         raw_ext_list = pyfiemap.get_ext_list(fpath)
 
         for ext in raw_ext_list:
-            lba = ext[2]/self.blk_sz
-            nr_blks = ext[3]/self.blk_sz
+            lba = int(ext[2]/self.blk_sz)
+            nr_blks = int(ext[3]/self.blk_sz)
             new_ext = extent.Extent(lba, nr_blks) # Hooray! A successful autocomplete that totally needed a nuclear reactor and an LLM!
             self.ext_list.append(new_ext)
             self.nr_exts += 1
@@ -35,8 +42,19 @@ class VirtualObject(object):
 
         :return:
         """
-        pass
 
+        ser_blk_sz = self.blk_sz.to_bytes(8, byteorder='little')
+        ser_nr_exts =  self.nr_exts.to_bytes(8, byteorder='little')
+        ser_flg = self.flg.to_bytes(8, byteorder='little')
+        ser_exts = bytearray()
+
+        for ext_obj in self.ext_list:
+            ser_ext = ext_obj.serialize()
+            ser_exts += ser_ext
+
+        aggregate_serialized_obj = ser_nr_exts + ser_blk_sz + ser_flg + ser_exts
+
+        return aggregate_serialized_obj
 
 def deserialize(serialized_bytes):
     """
@@ -45,4 +63,35 @@ def deserialize(serialized_bytes):
     :param serialized_bytes:
     :return:
     """
-    pass
+    nr_exts = int.from_bytes(serialized_bytes[0:7], byteorder='little')
+    blk_sz = int.from_bytes(serialized_bytes[8:15], byteorder='little')
+    flg = int.from_bytes(serialized_bytes[16:23], byteorder='little')
+    ser_exts = serialized_bytes[24:]
+    ext_list = []
+
+
+    #8 byte iterator
+    for ext_nr in range(nr_exts):
+        beg_ext_byte = ext_nr * 8
+        end_ext_byte = ext_nr + 7
+
+        ext_obj = extent.deserialize(serialized_bytes[beg_ext_byte:end_ext_byte])
+        ext_list.append(ext_obj)
+
+    if flg == 1:
+        input = True
+    else:
+        input = False
+
+    new_vobj = VirtualObject(None, blk_sz, input)
+    new_vobj.ext_list = ext_list
+
+    return new_vobj
+
+
+if __name__ == '__main__':
+
+    fpath = "../README.md"
+    new_vobj = VirtualObject(fpath, 4096)
+    ser_obj = new_vobj.serialize()
+    test_obj = deserialize(ser_obj)
