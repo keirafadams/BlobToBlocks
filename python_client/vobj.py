@@ -14,6 +14,7 @@ class VirtualObject(object):
         self.blk_sz = blk_sz
         self.ext_list = []
 
+        #TODO check valid path as well as path existence (probably looking for exceptions)
         if fpath is None:
             return
         else:
