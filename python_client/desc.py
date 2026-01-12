@@ -81,12 +81,13 @@ class Descriptor:
         """
         serialize entire descriptor including all virtual objects
 
-
         :return: serialized byte object
         """
         nr_args = len(self.arg_list)
         nr_input_objs = len(self.input_obj_instances)
         nr_output_objs = len(self.output_obj_instances)
+
+        desc_length = 0
 
         ser_in_vobj_list = []
         ser_out_vobj_list = []
@@ -114,8 +115,42 @@ class Descriptor:
             ser_out_vobj_list.append(ser_vobj)
             out_vobj_bin_length += len(ser_vobj)
 
+        # calculate descriptor length in bytes, dynamic portion
+        desc_length = arg_bin_length + in_vobj_bin_length + out_vobj_bin_length
 
-        
+        # Now we add in the fixed portion (an additional 4 64 bit integers)
+        desc_length += (8*4)
+
+        # now we convert lengths to binary
+        ser_nr_args = len(ser_arg_list).to_bytes(8, byteorder='little', signed=False)
+        ser_in_nr_vobjs =  len(ser_in_vobj_list).to_bytes(8, byteorder='little', signed=False)
+        ser_out_nr_vobjs = len(ser_out_vobj_list).to_bytes(8, byteorder='little', signed=False)
+        ser_desc_length = desc_length.to_bytes(8, byteorder='little', signed=False)
+
+        #and concatenate the whole mess together
+
+        # first concantenate serialized args
+        total_ser_args = bytes()
+        total_ser_in_vobjs = bytes()
+        total_ser_out_vobjs = bytes()
+
+        for ser_arg in ser_arg_list:
+            total_ser_args += ser_arg
+
+        # then input vobjs
+        for ser_vobj  in ser_in_vobj_list:
+            total_ser_in_vobjs += ser_vobj
+
+        # then output objs
+        for ser_vobj in ser_in_vobj_list:
+            total_ser_out_vobjs += ser_vobj
+
+        final_ser_desc = (ser_desc_length + ser_nr_args + total_ser_args
+                          + ser_in_nr_vobjs + total_ser_in_vobjs
+                          + ser_out_nr_vobjs + total_ser_out_vobjs)
+
+        return final_ser_desc
+
 
 
 

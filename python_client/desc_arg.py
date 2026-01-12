@@ -18,10 +18,13 @@ class DescArg(object):
         :return: bytes object
         """
 
-        serialized = bytes(self.arg, 'utf-8')
-        self.bin_sz = len(serialized)
+        serialized_arg = bytes(self.arg, 'utf-8')
+        self.bin_sz = len(serialized_arg)
+        ser_len = self.bin_sz.to_bytes(8, byteorder='little', signed=False)
 
-        return bytes
+        total_ser = (ser_len + serialized_arg)
+
+        return total_ser
 
 def deserialize(self, ser_arg):
     """
