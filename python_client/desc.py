@@ -1,4 +1,5 @@
 from vobj import VirtualObject
+from vobj import deserialize as deserialize_vobj
 from desc_arg import DescArg
 
 class Descriptor:
@@ -21,6 +22,8 @@ class Descriptor:
         if infile_list is None and outfile_list is None:
             raise Exception("Must specify at least one input or output location")
 
+
+        #TODO CHECK AND UPDATE FOR 8 CHARACTER STRING FOR OPERATION
         #TODO move to internal calls for creating objects
         # UPDATE: wish I new WTF I meant here by internal calls....
         self.arg_list = arg_list
@@ -127,7 +130,13 @@ class Descriptor:
         ser_out_nr_vobjs = len(ser_out_vobj_list).to_bytes(8, byteorder='little', signed=False)
         ser_desc_length = desc_length.to_bytes(8, byteorder='little', signed=False)
 
+        # Serialize operation
+        serialized_operation = bytes(self.operation, 'utf-8')
+        op_len = len(serialized_operation)
+        ser_op_len = op_len.to_bytes(8, byteorder='little', signed=False)
+        total_op_ser = (ser_op_len + serialized_operation)
         #and concatenate the whole mess together
+
 
         # first concantenate serialized args
         total_ser_args = bytes()
@@ -145,20 +154,89 @@ class Descriptor:
         for ser_vobj in ser_in_vobj_list:
             total_ser_out_vobjs += ser_vobj
 
-        final_ser_desc = (ser_desc_length + ser_nr_args + total_ser_args
+        final_ser_desc = (ser_desc_length + total_op_ser + ser_nr_args + total_ser_args
                           + ser_in_nr_vobjs + total_ser_in_vobjs
                           + ser_out_nr_vobjs + total_ser_out_vobjs)
 
         return final_ser_desc
 
-
-
-
-
-
 def deserialize(ser_desc):
-    pass
+    """
+    Takes serialized descriptor and unpacks it into the various
+    objects
+
+    :param ser_desc:
+    :return:
+    """
+
+    start_offset = 0
+
+    # grab total descriptor length
+    desc_byte_slice = ser_desc[start_offset:start_offset+8]
+    desc_len = int.from_bytes(desc_byte_slice, byteorder='little', signed=False)
+    start_offset += 8
+
+    #Grab operation
+    op_len = ser_desc[start_offset:start_offset+8]
+    start_offset += 8
+    operation = ser_desc[start_offset:start_offset+op_len].decode('utf-8')
+    start_offset += op_len
+
+    # grab number of arguments
+    nr_arg_byte_slice = ser_desc[start_offset:start_offset+8]
+    total_args = int.from_bytes(nr_arg_byte_slice, byteorder='little', signed=False)
+    start_offset += 8
+
+    # grab args
+    cur_arg_ctr = 0
+    arg_str_lists = []
+    while cur_arg_ctr < total_args:
+        #grab arg length
+        arg_length = int.from_bytes(ser_desc[start_offset:start_offset+8], byteorder='little', signed=False)
+        start_offset += 8
+
+        #extract string
+        argstring = ser_desc[start_offset:start_offset+arg_length].decode('utf-8')
+        arg_str_lists.append(argstring)
+
+        # adjust count and descriptor offset
+        cur_arg_ctr += 1
+        start_offset += arg_length
 
 
+    # grab input objects
+    cur_vobj_ctr = 0
+    nr_vobjs = ser_desc[start_offset:start_offset+8]
+    start_offset += 8
+    in_vobj_list = []
+    while cur_vobj_ctr < nr_vobjs:
+        new_vobj = deserialize_vobj(ser_desc[start_offset:])
+        nr_exts = len(new_vobj.ext_list)
+        in_vobj_list.append(new_vobj)
+        # 3 fixed metadata int64s per vobj
+        start_offset += 24
+        # and 2 per extent
+        start_offset += (nr_exts * 16)
+
+    # grab output objects
+    cur_vobj_ctr = 0
+    nr_vobjs = ser_desc[start_offset:start_offset + 8]
+    start_offset += 8
+    out_vobj_list = []
+    while cur_vobj_ctr < nr_vobjs:
+        new_vobj = deserialize_vobj(ser_desc[start_offset:])
+        nr_exts = len(new_vobj.ext_list)
+        out_vobj_list.append(new_vobj)
+        # 3 fixed metadata int64s per vobj
+        start_offset += 24
+        # and 2 per extent
+        start_offset += (nr_exts * 16)
+
+    # dump everything in a new descriptor
+    new_desc = Descriptor(operation, arg_str_lists)
+    new_desc.input_obj_instances = in_vobj_list
+    new_desc.output_vobj_instances = out_vobj_list
+
+    return new_desc
 
 
