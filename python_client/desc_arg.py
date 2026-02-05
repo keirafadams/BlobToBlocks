@@ -32,6 +32,8 @@ def deserialize(self, ser_arg):
 
     :return: instantiated DescArg object
     """
+    #TODO does not account for serialezed pre-pend length, do we
+    # account for that elsewhere???
     arg_str = ser_arg.decode("utf-8")
     new_desc_arg = DescArg(arg_str)
 

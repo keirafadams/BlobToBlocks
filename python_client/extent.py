@@ -26,11 +26,9 @@ def deserialize(ser_bytes):
     :param ser_bytes: serialized extent bytes, should be 16 bytes long
     :return: extent object
     """
-    lba = int.from_bytes(ser_bytes[0:7], byteorder='little', signed=False)
-    ext_len = int.from_bytes(ser_bytes[8:15], byteorder='little', signed=False)
+    lba = int.from_bytes(ser_bytes[0:8], byteorder='little', signed=False)
+    ext_len = int.from_bytes(ser_bytes[8:16], byteorder='little', signed=False)
 
     new_ext = Extent(lba,ext_len)
 
     return new_ext
-
-
